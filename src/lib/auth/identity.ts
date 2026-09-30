@@ -17,16 +17,36 @@ export function nimFromEmail(email: string | null | undefined): string | null {
   return found.length === 1 ? found[0] : null;
 }
 
+/**
+ * Angkatan dari NIM ITERA: digit ke-2 & ke-3 = tahun masuk.
+ * 124140097 -> 2024. Null jika tidak masuk akal.
+ */
+export function angkatanFromNim(nim: string | null | undefined, now = new Date()): number | null {
+  if (!nim || !/^\d{9}$/.test(nim)) return null;
+  const year = 2000 + Number(nim.slice(1, 3));
+  if (year < 2014 || year > now.getFullYear()) return null;
+  return year;
+}
+
 export type OwnerCheck =
   | { ok: true }
   | { ok: false; reason: "NO_NIM" | "NIM_NOT_FOUND" | "OTHER_NIM"; otherNim?: string };
 
-/** Pastikan teks SIAKAD milik NIM yang sama dengan akun yang login. */
-export function checkSiakadOwner(text: string, nim: string): OwnerCheck {
+const normName = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+
+/**
+ * Pastikan teks SIAKAD milik akun yang login. Halaman KRS memuat NIM; halaman Jadwal Kuliah
+ * hanya memuat nama di header, jadi jika tidak ada NIM sama sekali, nama lengkap yang dicocokkan.
+ */
+export function checkSiakadOwner(text: string, nim: string, name?: string | null): OwnerCheck {
   if (!nim) return { ok: false, reason: "NO_NIM" };
   const nims = new Set([...text.matchAll(NIM_RE)].map((m) => m[1]));
   const other = [...nims].find((n) => n !== nim);
   if (other) return { ok: false, reason: "OTHER_NIM", otherNim: other };
-  if (!nims.has(nim)) return { ok: false, reason: "NIM_NOT_FOUND" };
+  if (!nims.has(nim)) {
+    const n = name ? normName(name) : "";
+    if (n.length >= 3 && text.split(/\r?\n/).some((line) => normName(line) === n)) return { ok: true };
+    return { ok: false, reason: "NIM_NOT_FOUND" };
+  }
   return { ok: true };
 }

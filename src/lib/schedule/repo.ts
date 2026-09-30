@@ -1,6 +1,7 @@
 import type { ScheduleItem, User } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { HttpError } from "@/lib/api";
+import { MAX_SKS, SKS_LIMIT_MESSAGE, totalSks } from "./sks";
 
 export async function getActiveSemester(user: User) {
   if (!user.activeSemesterId) throw new HttpError(400, "Pilih semester aktif terlebih dahulu.");
@@ -50,3 +51,20 @@ export function toDTO(i: ScheduleItem) {
 }
 
 export type ScheduleDTO = ReturnType<typeof toDTO>;
+
+/** Tolak jika total SKS semester (setelah item ini disimpan) melebihi batas. */
+export async function assertSksLimit(
+  userId: string,
+  semesterId: string,
+  next: { type: string; title: string; courseCode: string | null; className: string | null; sks: string | null },
+  excludeId?: string,
+) {
+  if (next.type !== "COURSE") return;
+  const others = await prisma.scheduleItem.findMany({
+    where: { userId, semesterId, type: "COURSE", ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+    select: { type: true, title: true, courseCode: true, className: true, sks: true },
+  });
+  const before = totalSks(others).sks;
+  const after = totalSks([...others, next]).sks;
+  if (after > MAX_SKS && after > before) throw new HttpError(400, SKS_LIMIT_MESSAGE);
+}

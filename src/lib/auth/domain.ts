@@ -1,4 +1,5 @@
-export const ALLOWED_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN ?? "itera.ac.id").toLowerCase();
+/** Dikunci di kode: tidak bisa dilonggarkan lewat env. */
+export const ALLOWED_DOMAIN = "itera.ac.id";
 
 /**
  * Validasi server-side: hanya email @itera.ac.id atau subdomainnya

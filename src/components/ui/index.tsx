@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { forwardRef, useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -31,6 +31,22 @@ export const Button = forwardRef<
     />
   );
 });
+
+/** Tombol aksi berbahaya yang baru bisa diklik setelah hitung mundur (mencegah "kepencet").
+ *  Hitung mundur mulai saat mount — beri `key` yang berubah tiap dialog dibuka agar reset. */
+export function DelayedButton({ delay = 3, disabled, children, ...props }: Parameters<typeof Button>[0] & { delay?: number }) {
+  const [left, setLeft] = useState(delay);
+  useEffect(() => {
+    if (left <= 0) return;
+    const t = setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+  return (
+    <Button {...props} disabled={disabled || left > 0} aria-live="polite">
+      {children}{left > 0 && ` (${left})`}
+    </Button>
+  );
+}
 
 export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?: "slate" | "blue" | "green" | "amber" | "purple" | "red" }) {
   return (
@@ -73,12 +89,14 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   },
 );
 
-export function Field({ label, htmlFor, error, hint, children, className }: {
-  label: string; htmlFor: string; error?: string; hint?: ReactNode; children: ReactNode; className?: string;
+export function Field({ label, htmlFor, error, hint, children, className, required }: {
+  label: string; htmlFor: string; error?: string; hint?: ReactNode; children: ReactNode; className?: string; required?: boolean;
 }) {
   return (
     <div className={cn("space-y-1", className)}>
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-800">{label}</label>
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-800">
+        {label}{required && <span className="text-red-600" aria-hidden> *</span>}
+      </label>
       {children}
       {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
       {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
@@ -91,6 +109,7 @@ export function Dialog({ open, onClose, title, children, wide }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const downOnBackdrop = useRef(false);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -102,6 +121,13 @@ export function Dialog({ open, onClose, title, children, wide }: {
       ref={ref}
       onClose={onClose}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
+      // Klik di backdrop (target = <dialog> itu sendiri) menutup dialog.
+      // Cek mousedown juga supaya drag-select dari dalam form tidak ikut menutup.
+      onMouseDown={(e) => { downOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        if (downOnBackdrop.current && e.target === e.currentTarget) onClose();
+        downOnBackdrop.current = false;
+      }}
       aria-labelledby="dialog-title"
       className={cn(
         "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-white p-0 shadow-xl backdrop:bg-slate-900/40",

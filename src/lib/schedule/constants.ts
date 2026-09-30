@@ -4,6 +4,8 @@ export const DAYS = [
   { value: 3, label: "Rabu" },
   { value: 4, label: "Kamis" },
   { value: 5, label: "Jumat" },
+  { value: 6, label: "Sabtu", weekend: true },
+  { value: 7, label: "Minggu", weekend: true },
 ] as const;
 
 export type DayValue = (typeof DAYS)[number]["value"];
@@ -19,13 +21,15 @@ export const DAY_COLORS: Record<number, string> = {
   3: "FFE699", // Rabu - kuning
   4: "C6E0B4", // Kamis - hijau
   5: "F8CBAD", // Jumat - peach
+  6: "D9C3E9", // Sabtu - lavender
+  7: "B4E0DC", // Minggu - tosca
 };
 
 export function parseDay(input: string | null | undefined): number | null {
   if (!input) return null;
   const s = input.trim().toLowerCase().replace(/'/g, "");
   const map: Record<string, number> = {
-    senin: 1, selasa: 2, rabu: 3, kamis: 4, jumat: 5, jum: 5, "jum at": 5,
+    senin: 1, selasa: 2, rabu: 3, kamis: 4, jumat: 5, jum: 5, "jum at": 5, sabtu: 6, minggu: 7, ahad: 7,
   };
   return map[s] ?? null;
 }

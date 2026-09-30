@@ -1,12 +1,13 @@
-import { Navbar } from "@/components/dashboard/navbar";
+import { Presence } from "@/components/dashboard/presence";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { requireUserPage } from "@/lib/auth/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUserPage();
   return (
     <>
-      <Navbar name={user.name ?? user.email} image={user.image} />
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <Presence />
+      <Sidebar user={user}>{children}</Sidebar>
     </>
   );
 }

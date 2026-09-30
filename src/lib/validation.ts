@@ -25,7 +25,7 @@ export const scheduleInputSchema = z
     title: z.string().trim().min(1, "Nama wajib diisi").max(200),
     courseCode: optStr(40),
     className: optStr(20),
-    day: z.coerce.number().int().min(1).max(5).optional().nullable(),
+    day: z.coerce.number().int().min(1).max(7).optional().nullable(),
     startTime: time,
     endTime: time,
     room: optStr(120),
@@ -42,10 +42,23 @@ export const scheduleInputSchema = z
     sks: optStr(10),
     notes: optStr(1000),
   })
+  // SKS hanya untuk Mata Kuliah: praktikum sudah termasuk matkul induknya, asisten/lainnya tidak menambah SKS.
+  .transform((v) => (v.type === "COURSE" ? v : { ...v, sks: null }))
+  .refine((v) => v.day != null, { message: "Hari wajib diisi", path: ["day"] })
+  .refine((v) => !!v.startTime, { message: "Jam mulai wajib diisi", path: ["startTime"] })
+  .refine((v) => !!v.endTime, { message: "Jam selesai wajib diisi", path: ["endTime"] })
+  .refine((v) => v.type !== "COURSE" || /^\d+(\+\d+)*$/.test(v.sks ?? ""), {
+    message: "SKS wajib diisi angka untuk Mata Kuliah",
+    path: ["sks"],
+  })
   .refine(
     (v) => !v.startTime || !v.endTime || timeToMinutes(v.endTime)! > timeToMinutes(v.startTime)!,
     { message: "Jam selesai harus setelah jam mulai", path: ["endTime"] },
-  );
+  )
+  .refine((v) => v.type !== "OTHER" || !!v.notes, {
+    message: "Catatan wajib diisi untuk jenis Lainnya",
+    path: ["notes"],
+  });
 
 export type ScheduleInput = z.infer<typeof scheduleInputSchema>;
 
@@ -64,31 +77,17 @@ export const profileSchema = z.object({
   prodi: z.string().trim().min(2, "Program studi wajib diisi").max(120),
 });
 
-export const semesterSchema = z.object({
-  number: z.coerce.number().int().min(1).max(14),
-  label: optStr(60),
+/** User hanya boleh menambah semester pendek; nomor semester reguler ditentukan sistem. */
+export const shortSemesterSchema = z.object({
   spsUrl: spsUrlSchema,
 });
 
 export const onboardingSchema = profileSchema.extend({
-  semester: z.coerce.number().int().min(1).max(14),
   spsUrl: spsUrlSchema,
 });
 
 export const syncSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("siakad"), text: z.string().max(200_000).optional() }),
-  z.object({
-    mode: z.literal("pick"),
-    courses: z
-      .array(
-        z.object({
-          courseCode: z.string().trim().min(1).max(40),
-          courseName: z.string().trim().min(1).max(200),
-          className: z.string().trim().max(20).optional(),
-          sks: z.string().trim().max(10).optional(),
-        }),
-      )
-      .max(40),
-  }),
   z.object({ mode: z.literal("refresh") }),
 ]);
+

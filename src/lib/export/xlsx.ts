@@ -9,7 +9,7 @@ export async function buildScheduleWorkbook(
   opts: { semesterLabel: string },
 ): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "SPS Jadwal Kuliah ITERA";
+  wb.creator = "Jadwalin";
   const ws = wb.addWorksheet("Jadwal Kuliah");
   ws.columns = COL_WIDTHS.map((width) => ({ width }));
 

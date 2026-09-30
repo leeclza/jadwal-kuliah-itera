@@ -25,4 +25,10 @@ describe("checkSiakadOwner: akun SIAKAD harus sama dengan akun login", () => {
   it("NIP dosen (18 digit) & kode MK tidak dianggap NIM", () => {
     expect(checkSiakadOwner(page + "\tNIP 199001012020121001", "124140097")).toEqual({ ok: true });
   });
+  it("halaman Jadwal Kuliah tanpa NIM: cocokkan nama di header", () => {
+    const jadwal = "Semester Aktif: 2026/2027 Ganjil\n CHRISTOPHER LEON SAPUTRA\n Logout\n6\tIF25-40412\t43272\tR\tTeknologi Game\t3";
+    expect(checkSiakadOwner(jadwal, "124140097", "Christopher Leon Saputra")).toEqual({ ok: true });
+    expect(checkSiakadOwner(jadwal, "124140097", "Christopher Leon")).toMatchObject({ ok: false, reason: "NIM_NOT_FOUND" });
+    expect(checkSiakadOwner(jadwal, "124140097", "Budi Santoso")).toMatchObject({ ok: false, reason: "NIM_NOT_FOUND" });
+  });
 });

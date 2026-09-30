@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Field, Input } from "@/components/ui";
+import { toast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/client-api";
 
 const baseSchema = z.object({
@@ -14,7 +15,6 @@ const baseSchema = z.object({
   prodi: z.string().trim().min(2, "Program studi wajib diisi"),
 });
 const onboardingSchema = baseSchema.extend({
-  semester: z.coerce.number<string>().int().min(1, "Minimal 1").max(14, "Maksimal 14"),
   spsUrl: z.string().trim().optional(),
 });
 type FormValues = z.input<typeof onboardingSchema>;
@@ -23,11 +23,14 @@ export function ProfileForm({
   mode,
   email,
   defaults,
+  lockedNim,
   onDone,
 }: {
   mode: "onboarding" | "edit";
   email: string;
-  defaults: { name?: string | null; nim?: string | null; prodi?: string | null };
+  defaults: { name?: string | null; nim?: string | null; prodi?: string | null; semester?: number | null };
+  /** NIM dari email ITERA: dikunci, tidak bisa diubah. */
+  lockedNim?: string | null;
   onDone?: () => void;
 }) {
   const router = useRouter();
@@ -40,9 +43,8 @@ export function ProfileForm({
     resolver: zodResolver(mode === "onboarding" ? onboardingSchema : baseSchema) as never,
     defaultValues: {
       name: defaults.name ?? "",
-      nim: defaults.nim ?? "",
-      prodi: defaults.prodi ?? "Teknik Informatika",
-      semester: "1",
+      nim: lockedNim ?? defaults.nim ?? "",
+      prodi: defaults.prodi ?? "",
       spsUrl: "",
     },
   });
@@ -56,6 +58,7 @@ export function ProfileForm({
       } else {
         const { name, nim, prodi } = values;
         await apiFetch("/api/profile", { method: "PATCH", body: { name, nim, prodi } });
+        toast.success("Profil berhasil disimpan.");
         onDone?.();
       }
       router.refresh();
@@ -73,8 +76,8 @@ export function ProfileForm({
         <Input id="name" autoComplete="name" {...register("name")} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="NIM" htmlFor="nim" error={errors.nim?.message}>
-          <Input id="nim" inputMode="numeric" {...register("nim")} />
+        <Field label="NIM" htmlFor="nim" error={errors.nim?.message} hint={lockedNim ? "Otomatis dari email ITERA." : undefined}>
+          <Input id="nim" inputMode="numeric" readOnly={Boolean(lockedNim)} className={lockedNim ? "bg-slate-50" : undefined} {...register("nim")} />
         </Field>
         <Field label="Program Studi" htmlFor="prodi" error={errors.prodi?.message}>
           <Input id="prodi" {...register("prodi")} />
@@ -82,8 +85,8 @@ export function ProfileForm({
       </div>
       {mode === "onboarding" && (
         <>
-          <Field label="Semester aktif" htmlFor="semester" error={errors.semester?.message}>
-            <Input id="semester" type="number" min={1} max={14} {...register("semester")} />
+          <Field label="Semester aktif" htmlFor="semester" hint="Otomatis dari angkatan di NIM, naik sendiri tiap semester baru. Tidak bisa diubah.">
+            <Input id="semester" value={defaults.semester ?? 1} readOnly disabled className="bg-slate-50" />
           </Field>
           <Field
             label="Link SPS (Google Sheets jadwal prodi)"

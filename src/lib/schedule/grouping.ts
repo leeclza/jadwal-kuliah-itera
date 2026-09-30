@@ -10,12 +10,13 @@ export function sortSchedule<T extends ScheduleLike>(items: T[]): T[] {
   );
 }
 
-/** Senin-Jumat selalu ada, walaupun kosong. Item tanpa hari tidak masuk. */
+/** Senin-Jumat selalu ada, walaupun kosong. Sabtu/Minggu hanya jika ada jadwal. Item tanpa hari tidak masuk. */
 export function groupByDay<T extends ScheduleLike>(items: T[]) {
   const sorted = sortSchedule(items);
   return DAYS.map((d) => ({
     day: d.value,
     label: d.label,
+    weekend: "weekend" in d,
     items: sorted.filter((i) => i.day === d.value),
-  }));
+  })).filter((g) => !g.weekend || g.items.length > 0);
 }

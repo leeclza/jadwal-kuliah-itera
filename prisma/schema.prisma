@@ -22,6 +22,11 @@ enum ScheduleType {
   OTHER
 }
 
+enum Role {
+  MAHASISWA
+  ADMIN
+}
+
 enum MatchStatus {
   MATCHED
   UNMATCHED
@@ -37,6 +42,11 @@ model User {
   prodi            String?
   image            String?
   activeSemesterId String?
+  role             Role      @default(MAHASISWA)
+  /// Terakhir membuka aplikasi (di-update maksimal tiap 5 menit)
+  lastSeenAt       DateTime?
+  /// Heartbeat dari tab yang sedang terbuka; null = offline (tab ditutup / logout)
+  onlineAt         DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -44,12 +54,15 @@ model User {
   sessions      Session[]
   semesters     Semester[]
   scheduleItems ScheduleItem[]
+  auditLogs     AuditLog[]
 }
 
 model Semester {
   id        String   @id @default(cuid())
   userId    String
   number    Int
+  /// Semester pendek (SP) setelah semester genap `number`; opsional, hanya jika diambil
+  isShort   Boolean  @default(false)
   label     String?
   /// Link Google Sheets SPS (sumber hari + jam) untuk semester ini
   spsUrl    String?
@@ -60,7 +73,7 @@ model Semester {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   scheduleItems ScheduleItem[]
 
-  @@unique([userId, number])
+  @@unique([userId, number, isShort])
 }
 
 model ScheduleItem {
@@ -95,6 +108,44 @@ model ScheduleItem {
 
   @@unique([userId, semesterId, source, sourceId])
   @@index([userId, semesterId])
+}
+
+
+/// Catatan aktivitas (append-only). Snapshot actor disimpan supaya histori
+/// tetap benar walau user mengganti nama/role.
+model AuditLog {
+  id          String   @id @default(cuid())
+
+  actorId     String?
+  actorName   String?
+  actorEmail  String?
+  actorRole   String?
+
+  action      String
+  category    String
+  description String
+
+  targetType  String?
+  targetId    String?
+  targetName  String?
+
+  beforeData  Json?
+  afterData   Json?
+  metadata    Json?
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([category])
+  @@index([targetType])
+  @@index([createdAt])
+  @@index([actorRole])
 }
 
 // ---- Auth.js ----

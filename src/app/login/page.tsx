@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-2">
           <CalendarDays className="size-6 text-blue-700" aria-hidden />
-          <h1 className="text-lg font-semibold">SPS Jadwal Kuliah ITERA</h1>
+          <h1 className="text-lg font-semibold">Jadwalin</h1>
         </div>
         <p className="mb-6 text-sm text-slate-600">
           Gabungkan mata kuliah dari SIAKAD dengan hari &amp; jam dari SPS, tambah jadwal praktikum, lalu
@@ -49,7 +49,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             Masuk dengan Google
           </button>
         </form>
-        <p className="mt-4 text-center text-xs text-slate-500">Khusus akun @itera.ac.id</p>
+        <p className="mt-4 text-center text-xs text-slate-500">Khusus akun @student.itera.ac.id</p>
       </div>
     </main>
   );

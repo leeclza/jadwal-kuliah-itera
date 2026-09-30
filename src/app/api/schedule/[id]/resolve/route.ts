@@ -6,6 +6,8 @@ import { requireUserApi } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { findOwnedItem, type CandidateDTO } from "@/lib/schedule/repo";
 import { sourceIdFor } from "@/lib/schedule/sync";
+import { AuditAction, AuditTargetType } from "@/lib/audit/actions";
+import { actorName, createAuditLog } from "@/lib/audit/audit.service";
 
 type Ctx = { params: Promise<{ id: string }> };
 const bodySchema = z.object({ className: z.string().trim().min(1).max(20) });
@@ -58,6 +60,21 @@ export const POST = withErrors(async (req: Request, { params }: Ctx) => {
         create: { ...data, userId: user.id, semesterId: item.semesterId, source: "SIAKAD", sourceId },
       });
     }
+    await createAuditLog(
+      {
+        actor: user,
+        action: AuditAction.SCHEDULE_RESOLVE,
+        description: `${actorName(user)} memilih kelas ${cls} untuk ${item.title}`,
+        targetType: AuditTargetType.SCHEDULE,
+        targetId: item.id,
+        targetName: item.title,
+        beforeData: { className: item.className, matchStatus: item.matchStatus },
+        afterData: { className: cls, matchStatus: "MATCHED" },
+        metadata: { sessions: chosen.length },
+        request: req,
+      },
+      tx,
+    );
   });
   return NextResponse.json({ ok: true });
 });

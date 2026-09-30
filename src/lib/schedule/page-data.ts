@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { defaultSpsUrl } from "@/lib/google-sheets/service";
 import { sortSchedule } from "./grouping";
 import { toDTO } from "./repo";
+import { semesterName } from "./semester";
 
 /** Data jadwal semester aktif untuk halaman (server component). */
 export async function loadActiveSchedule(user: User) {
@@ -14,7 +15,7 @@ export async function loadActiveSchedule(user: User) {
     : [];
   return {
     semester,
-    semesterLabel: semester ? semester.label || `Semester ${semester.number}` : "-",
+    semesterLabel: semester ? semesterName(semester) : "-",
     spsUrlSet: Boolean(semester?.spsUrl || defaultSpsUrl() || process.env.SCHEDULE_TIME_PROVIDER === "mock"),
     items: sortSchedule(items.map(toDTO)),
   };

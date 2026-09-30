@@ -9,7 +9,6 @@ import type { SiakadCourse } from "./types";
 
 export type SyncRequest =
   | { mode: "siakad"; text?: string }
-  | { mode: "pick"; courses: SiakadCourse[] }
   | { mode: "refresh" };
 
 export interface SyncSummary {
@@ -28,7 +27,7 @@ const toDb = (d: SyncItemData) => ({
 const OWNER_ERRORS = {
   NO_NIM: "Lengkapi NIM di Profile dulu.",
   NIM_NOT_FOUND:
-    "NIM kamu tidak ditemukan di teks SIAKAD. Copy seluruh halaman KRS/Jadwal (Ctrl+A) supaya bagian NIM ikut tercopy.",
+    "NIM atau nama kamu tidak ditemukan di teks SIAKAD. Copy seluruh halaman (Ctrl+A) supaya NIM/nama di bagian atas ikut tercopy, dan pastikan nama di Profile sama dengan nama di SIAKAD.",
   OTHER_NIM:
     "Data SIAKAD yang ditempel milik NIM lain. Login SIAKAD harus memakai akun yang sama dengan akun Google di web ini.",
 } as const;
@@ -37,7 +36,7 @@ export async function syncSiakadSchedules(
   userId: string,
   semesterId: string,
   req: SyncRequest,
-  owner: { nim: string | null } = { nim: null },
+  owner: { nim: string | null; name?: string | null } = { nim: null },
 ): Promise<SyncSummary> {
   const semester = await prisma.semester.findFirst({ where: { id: semesterId, userId } });
   if (!semester) throw new HttpError(404, "Semester tidak ditemukan.");
@@ -54,12 +53,10 @@ export async function syncSiakadSchedules(
     // Teks SIAKAD wajib milik NIM user (akun SIAKAD = akun Google yang login).
     // Teks kosong: provider real menolak sendiri, provider mock memakai data contoh.
     if (req.text?.trim()) {
-      const check = checkSiakadOwner(req.text ?? "", owner.nim ?? "");
+      const check = checkSiakadOwner(req.text ?? "", owner.nim ?? "", owner.name);
       if (!check.ok) throw new HttpError(403, OWNER_ERRORS[check.reason]);
     }
     courses = await provider.getCourses({ text: req.text });
-  } else if (req.mode === "pick") {
-    courses = req.courses;
   } else {
     const seen = new Set<string>();
     courses = [];

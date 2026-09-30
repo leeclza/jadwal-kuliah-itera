@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fake DB: item milik user B
-const db = [{ id: "item-b", userId: "user-b", source: "MANUAL", semesterId: "s" }];
-let currentUser = { id: "user-a" };
+const db = [{ id: "item-b", userId: "user-b", source: "MANUAL", semesterId: "s", title: "PBO", isManual: true }];
+let currentUser = { id: "user-a", email: "a@student.itera.ac.id" };
 
-vi.mock("@/lib/db/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/db/prisma", () => {
+  const prisma = {
+    auditLog: { create: vi.fn(async () => ({ id: "log" })) },
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
     scheduleItem: {
       findFirst: vi.fn(async ({ where }: { where: { id: string; userId: string } }) =>
         db.find((i) => i.id === where.id && i.userId === where.userId) ?? null),
       delete: vi.fn(async () => ({})),
     },
-  },
-}));
+  };
+  return { prisma };
+});
 
 vi.mock("@/lib/auth/session", () => ({
   UnauthorizedError: class extends Error {},
@@ -23,7 +26,7 @@ describe("Test F: user A tidak bisa mengakses data user B", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("DELETE jadwal milik user lain -> 404 dan tidak menghapus", async () => {
-    currentUser = { id: "user-a" };
+    currentUser = { id: "user-a", email: "a@student.itera.ac.id" };
     const { DELETE } = await import("@/app/api/schedule/[id]/route");
     const { prisma } = await import("@/lib/db/prisma");
     const res = await DELETE(new Request("http://x"), { params: Promise.resolve({ id: "item-b" }) });
@@ -32,7 +35,7 @@ describe("Test F: user A tidak bisa mengakses data user B", () => {
   });
 
   it("pemilik bisa menghapus jadwalnya sendiri", async () => {
-    currentUser = { id: "user-b" };
+    currentUser = { id: "user-b", email: "b@student.itera.ac.id" };
     const { DELETE } = await import("@/app/api/schedule/[id]/route");
     const { prisma } = await import("@/lib/db/prisma");
     const res = await DELETE(new Request("http://x"), { params: Promise.resolve({ id: "item-b" }) });

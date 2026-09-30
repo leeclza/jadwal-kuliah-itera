@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Copy, Download, MoreVertical, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
-import { Button, Card, Dialog, Input, Select } from "@/components/ui";
+import { AlertTriangle,Download, MoreVertical, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Button, Card, DelayedButton, Dialog, Input, Select } from "@/components/ui";
 import { apiFetch } from "@/lib/client-api";
 import { DAY_COLORS, DAY_LABEL, DAYS, formatTimeRange } from "@/lib/schedule/constants";
 import { detectScheduleConflict } from "@/lib/schedule/conflict";
@@ -11,6 +11,7 @@ import { groupByDay } from "@/lib/schedule/grouping";
 import type { ScheduleDTO } from "@/lib/schedule/repo";
 import { MatchBadge, SourceBadge } from "./source-badge";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
+import { toast } from "@/components/ui/toast";
 import { SyncDialog } from "./sync-dialog";
 import { ResolveDialog } from "./resolve-dialog";
 
@@ -30,11 +31,11 @@ export function ScheduleManager({
   const [day, setDay] = useState<string>("ALL");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [editing, setEditing] = useState<ScheduleDTO | "new" | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [resolving, setResolving] = useState<ScheduleDTO | null>(null);
   const [deleting, setDeleting] = useState<ScheduleDTO | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
 
   const conflicts = useMemo(() => detectScheduleConflict(items), [items]);
   const nameOf = (id: string) => items.find((i) => i.id === id)?.title ?? "";
@@ -60,10 +61,10 @@ export function ScheduleManager({
     setMenuFor(null);
     try {
       await fn();
-      setNotice({ tone: "ok", text: ok });
+      toast.success(ok);
       router.refresh();
     } catch (e) {
-      setNotice({ tone: "err", text: (e as Error).message });
+      toast.error((e as Error).message);
     }
   }
 
@@ -75,12 +76,6 @@ export function ScheduleManager({
       <Button size="sm" variant="ghost" onClick={() => { setMenuFor(null); setEditing(i); }} aria-label={`Edit ${i.title}`}>
         <Pencil className="size-4" /> <span className="md:sr-only">Edit</span>
       </Button>
-      {i.source === "SIAKAD" && (
-        <Button size="sm" variant="ghost" aria-label={`Salin ${i.title} menjadi jadwal manual`}
-          onClick={() => act(() => apiFetch(`/api/schedule/${i.id}/copy`, { method: "POST" }), "Disalin menjadi jadwal manual.")}>
-          <Copy className="size-4" /> <span className="md:sr-only">Salin jadi manual</span>
-        </Button>
-      )}
       <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => { setMenuFor(null); setDeleting(i); }} aria-label={`Hapus ${i.title}`}>
         <Trash2 className="size-4" /> <span className="md:sr-only">Hapus</span>
       </Button>
@@ -109,17 +104,17 @@ export function ScheduleManager({
             <a href="/api/export" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600">
               <Download className="size-4" aria-hidden /> Download XLSX
             </a>
+            {items.length > 0 && (
+              <Button variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => setDeletingAll(true)}>
+                <Trash2 className="size-4" aria-hidden /> Hapus Semua
+              </Button>
+            )}
           </div>
         </div>
         {!spsUrlSet && (
           <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Link SPS semester ini belum diisi, jadi hari &amp; jam belum bisa dicocokkan.{" "}
             <a className="font-medium underline" href="/profile">Isi link SPS di Profile</a>.
-          </p>
-        )}
-        {notice && (
-          <p role="status" className={`mt-4 rounded-lg px-3 py-2 text-sm ${notice.tone === "ok" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`}>
-            {notice.text}
           </p>
         )}
       </Card>
@@ -271,21 +266,33 @@ export function ScheduleManager({
       {editing !== null && (
       <ScheduleFormDialog
         item={editing === "new" ? null : editing}
+        items={items}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSaved={(msg) => { setEditing(null); setNotice({ tone: "ok", text: msg }); router.refresh(); }}
+        onSaved={(msg) => { setEditing(null); toast.success(msg); router.refresh(); }}
       />
       )}
       {syncOpen && (
       <SyncDialog
         open={syncOpen}
         siakadMock={siakadMock}
-        currentItems={items}
         onClose={() => setSyncOpen(false)}
-        onDone={() => router.refresh()}
+        onDone={() => { toast.success("Jadwal berhasil diperbarui."); router.refresh(); }}
       />
       )}
-      <ResolveDialog item={resolving} onClose={() => setResolving(null)} onDone={(msg) => { setResolving(null); setNotice({ tone: "ok", text: msg }); router.refresh(); }} />
+      <ResolveDialog item={resolving} onClose={() => setResolving(null)} onDone={(msg) => { setResolving(null); toast.success(msg); router.refresh(); }} />
+      <Dialog open={deletingAll} onClose={() => setDeletingAll(false)} title="Hapus semua jadwal?">
+        <p className="text-sm text-slate-600">
+          Semua <strong>{items.length} jadwal</strong> di semester ini akan dihapus, termasuk jadwal manual (praktikum, asisten, dll.).
+          Jadwal semester lain di Arsip tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.
+        </p>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => setDeletingAll(false)}>Batal</Button>
+          <DelayedButton key={String(deletingAll)} variant="danger" onClick={() => { setDeletingAll(false); act(() => apiFetch("/api/schedule", { method: "DELETE" }), "Semua jadwal dihapus."); }}>
+            Hapus Semua
+          </DelayedButton>
+        </div>
+      </Dialog>
       <Dialog open={deleting !== null} onClose={() => setDeleting(null)} title="Hapus jadwal?">
         <p className="text-sm text-slate-700">
           <strong>{deleting?.title}</strong>{deleting?.day ? ` (${DAY_LABEL[deleting.day]}, ${formatTimeRange(deleting.startTime, deleting.endTime)})` : ""} akan dihapus.
@@ -295,9 +302,9 @@ export function ScheduleManager({
         )}
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
-          <Button variant="danger" onClick={() => { const d = deleting!; setDeleting(null); act(() => apiFetch(`/api/schedule/${d.id}`, { method: "DELETE" }), "Jadwal dihapus."); }}>
+          <DelayedButton key={deleting?.id ?? "none"} variant="danger" onClick={() => { const d = deleting!; setDeleting(null); act(() => apiFetch(`/api/schedule/${d.id}`, { method: "DELETE" }), "Jadwal dihapus."); }}>
             Hapus
-          </Button>
+          </DelayedButton>
         </div>
       </Dialog>
       {conflicts.size > 0 && (

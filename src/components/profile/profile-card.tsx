@@ -5,7 +5,8 @@ import { Pencil } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 import { ProfileForm } from "./profile-form";
 
-export function ProfileCard({ user }: {
+export function ProfileCard({ user, lockedNim }: {
+  lockedNim?: string | null;
   user: { email: string; name: string | null; nim: string | null; prodi: string | null; image: string | null };
 }) {
   const [editing, setEditing] = useState(false);
@@ -34,7 +35,7 @@ export function ProfileCard({ user }: {
       </div>
       {editing ? (
         <div className="mt-5 border-t border-slate-100 pt-5">
-          <ProfileForm mode="edit" email={user.email} defaults={user} onDone={() => setEditing(false)} />
+          <ProfileForm mode="edit" email={user.email} defaults={user} lockedNim={lockedNim} onDone={() => setEditing(false)} />
           <Button variant="ghost" className="mt-2" onClick={() => setEditing(false)}>Batal</Button>
         </div>
       ) : (
