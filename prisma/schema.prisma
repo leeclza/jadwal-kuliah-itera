@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Untuk Neon/Supabase (pooler): isi DATABASE_URL_UNPOOLED dengan koneksi non-pooled.
+  // Kalau tidak pakai pooler, isi sama dengan DATABASE_URL.
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum ScheduleSource {
+  SIAKAD
+  MANUAL
+}
+
+enum ScheduleType {
+  COURSE
+  PRACTICUM
+  ASSISTANT
+  OTHER
+}
+
+enum MatchStatus {
+  MATCHED
+  UNMATCHED
+  AMBIGUOUS
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    DateTime?
+  name             String?
+  nim              String?
+  prodi            String?
+  image            String?
+  activeSemesterId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  semesters     Semester[]
+  scheduleItems ScheduleItem[]
+}
+
+model Semester {
+  id        String   @id @default(cuid())
+  userId    String
+  number    Int
+  label     String?
+  /// Link Google Sheets SPS (sumber hari + jam) untuk semester ini
+  spsUrl    String?
+  lastSyncAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduleItems ScheduleItem[]
+
+  @@unique([userId, number])
+}
+
+model ScheduleItem {
+  id          String         @id @default(cuid())
+  userId      String
+  semesterId  String
+  type        ScheduleType   @default(COURSE)
+  source      ScheduleSource
+  title       String
+  courseCode  String?
+  courseName  String?
+  className   String?
+  room        String?
+  lecturers   String[]       @default([])
+  sks         String?
+  /// 1 = Senin ... 5 = Jumat. Null jika belum cocok dengan SPS.
+  day         Int?
+  startTime   String?
+  endTime     String?
+  notes       String?
+  /// Kunci stabil untuk data SIAKAD (kode|kelas|sesi). Null untuk MANUAL.
+  sourceId    String?
+  isManual    Boolean        @default(false)
+  matchStatus MatchStatus    @default(MATCHED)
+  /// Kandidat baris SPS saat matching ambigu
+  candidates  Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semester Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, semesterId, source, sourceId])
+  @@index([userId, semesterId])
+}
+
+// ---- Auth.js ----
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
