@@ -45,9 +45,17 @@ const TYPE_HINT: Record<FormValues["type"], string> = {
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** Ketik 4 digit -> otomatis jadi HH:MM. */
+/** Ketik 4 digit -> otomatis jadi HH:MM. Jam dibatasi 00–23, menit 00–59. */
 function maskTime(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 4);
+  let d = "";
+  for (const c of v.replace(/\D/g, "")) {
+    if (d.length === 4) break;
+    const n = Number(c);
+    if (d.length === 0 && n > 2) d += "0"; // ketik "8" -> "08"
+    else if (d.length === 1 && d === "2" && n > 3) continue; // jam maks 23
+    else if (d.length === 2 && n > 5) continue; // menit maks 59
+    d += c;
+  }
   return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
 }
 

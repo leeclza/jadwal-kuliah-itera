@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle,Download, MoreVertical, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { AlertTriangle,MoreVertical, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Button, Card, DelayedButton, Dialog, Input, Select } from "@/components/ui";
 import { apiFetch } from "@/lib/client-api";
 import { DAY_COLORS, DAY_LABEL, DAYS, formatTimeRange } from "@/lib/schedule/constants";
@@ -101,9 +101,6 @@ export function ScheduleManager({
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             <Button onClick={() => setSyncOpen(true)}><RefreshCw className="size-4" aria-hidden /> Update dari SIAKAD</Button>
             <Button variant="outline" onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> Tambah Jadwal</Button>
-            <a href="/api/export" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600">
-              <Download className="size-4" aria-hidden /> Download XLSX
-            </a>
             {items.length > 0 && (
               <Button variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => setDeletingAll(true)}>
                 <Trash2 className="size-4" aria-hidden /> Hapus Semua
