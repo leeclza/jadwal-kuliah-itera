@@ -5,31 +5,48 @@ import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui";
 import { apiFetch } from "@/lib/client-api";
-import { IMPORT_MESSAGE, IMPORT_READY, SIAKAD_ORIGIN } from "@/lib/siakad/bookmarklet";
+import { IMPORT_MESSAGE, IMPORT_READY, SIAKAD_ORIGIN, type ImportData, type ImportReady } from "@/lib/siakad/bookmarklet";
 import type { SyncSummary } from "@/lib/schedule/sync-service";
 
 type State = { s: "waiting" } | { s: "busy" } | { s: "done"; summary: SyncSummary } | { s: "error"; msg: string };
 
 /** Menerima teks jadwal dari bookmarklet di tab SIAKAD lalu menjalankan sync otomatis. */
-export function SiakadImport() {
+export function SiakadImport({ semester, semesterLabel }: { semester: number | null; semesterLabel: string }) {
   const [state, setState] = useState<State>({ s: "waiting" });
   const started = useRef(false);
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.origin !== SIAKAD_ORIGIN || started.current) return;
-      const data = e.data as { type?: string; text?: unknown };
+      const data = e.data as Partial<ImportData>;
       if (data?.type !== IMPORT_MESSAGE || typeof data.text !== "string") return;
       started.current = true;
+      // Tolak kalau tingkat semester yang terbaca di SIAKAD tidak sama dengan semester aktif.
+      if (data.semester === undefined) {
+        setState({ s: "error", msg: "Bookmark \"Kirim ke Jadwalin\" kamu versi lama. Hapus bookmark-nya, lalu seret ulang dari dialog Update SIAKAD." });
+        return;
+      }
+      if (semester !== null && data.semester !== String(semester)) {
+        setState({ s: "error", msg: `Tingkat Semester di SIAKAD (${data.semester ?? "tidak terbaca"}) tidak sesuai dengan semester aktif kamu (${semesterLabel}).` });
+        return;
+      }
       setState({ s: "busy" });
       apiFetch<{ summary: SyncSummary }>("/api/schedule/sync", { method: "POST", body: { mode: "siakad", text: data.text } })
         .then((r) => setState({ s: "done", summary: r.summary }))
         .catch((err: Error) => setState({ s: "error", msg: err.message }));
     }
     window.addEventListener("message", onMessage);
-    window.opener?.postMessage(IMPORT_READY, SIAKAD_ORIGIN);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
+    // Kirim READY berulang sampai data datang (antisipasi listener di tab SIAKAD belum siap).
+    // String lama tetap dikirim agar bookmark versi lama mengirim data & dapat pesan untuk update.
+    const ping = () => {
+      if (started.current) return;
+      window.opener?.postMessage({ type: IMPORT_READY, semester } satisfies ImportReady, SIAKAD_ORIGIN);
+      window.opener?.postMessage(IMPORT_READY, SIAKAD_ORIGIN);
+    };
+    ping();
+    const timer = setInterval(ping, 1000);
+    return () => { window.removeEventListener("message", onMessage); clearInterval(timer); };
+  }, [semester, semesterLabel]);
 
   return (
     <Card className="p-6">

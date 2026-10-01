@@ -3,6 +3,7 @@ import { SchedulePreview } from "@/components/schedule/schedule-preview";
 import { requireUserPage } from "@/lib/auth/session";
 import { loadActiveSchedule } from "@/lib/schedule/page-data";
 import { exportFileName } from "@/lib/export/xlsx";
+import { WallpaperDownload } from "@/components/schedule/wallpaper-download";
 
 export default async function JadwalPage() {
   const user = await requireUserPage();
@@ -16,12 +17,15 @@ export default async function JadwalPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Preview Jadwal</h1>
           <p className="text-sm text-slate-600">Tampilan ini sama dengan file Excel yang akan di-download.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <WallpaperDownload items={items} semesterLabel={semesterLabel} fileName={exportFileName(user.nim).replace(/\.xlsx$/, "_Wallpaper.png")} />
         <a
           href="/api/export"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           <Download className="size-4" aria-hidden /> Download XLSX
         </a>
+        </div>
       </div>
       {unscheduled.length > 0 && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
