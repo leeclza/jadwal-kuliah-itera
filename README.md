@@ -3,7 +3,19 @@
 Gabungkan **mata kuliah dari SIAKAD** dengan **hari + jam dari SPS (Google Sheets prodi)**, tambah jadwal manual
 (praktikum, asisten, organisasi), lalu download jadwal `.xlsx` berwarna per hari ala tabel ITERA.
 
-Stack: Next.js 16 (App Router) · TypeScript · Tailwind v4 · Prisma 6 + PostgreSQL · Auth.js v5 (Google OAuth) · ExcelJS · Vitest.
+### Tech stack
+
+| Bagian | Teknologi |
+| --- | --- |
+| Framework | **Next.js 16** (App Router) + **React 19** |
+| Bahasa | **TypeScript** |
+| Styling | **Tailwind CSS v4** + `clsx` / `tailwind-merge`, ikon `lucide-react` |
+| Database | **PostgreSQL** (Neon) lewat **Prisma 6** (ORM) |
+| Login | **Auth.js v5** (`next-auth`), Google OAuth khusus `@itera.ac.id` |
+| Form & validasi | `react-hook-form` + **Zod** |
+| Data | `papaparse` (baca CSV SPS dari Google Sheets), `exceljs` (export XLSX) |
+| Testing & lint | **Vitest**, ESLint |
+| Deploy | **Vercel** (`npm run vercel-build`) |
 
 - [1. SKPL](#1-skpl--spesifikasi-kebutuhan-perangkat-lunak)
 - [2. Setup lokal](#2-setup-lokal)
@@ -137,6 +149,14 @@ npm run db:migrate       # development (prisma migrate dev)
 # 4. Jalankan
 npm run dev              # http://localhost:3000
 ```
+
+> **`npm run dev` gagal di Windows?** Jika muncul `An Application Control policy has blocked this file`
+> (`next-swc.win32-x64-msvc.node`) lalu `Turbopack is not supported on this platform`, berarti Windows
+> (biasanya **Smart App Control**) memblokir binary native Next.js. Turbopack (bundler default `next dev`)
+> butuh binary itu, Webpack tidak. Solusi:
+> - Cepat: jalankan `npx next dev --webpack` (lebih lambat, tapi jalan).
+> - Permanen: Windows Security → App & browser control → **Smart App Control: Off**, lalu hapus `node_modules`
+>   dan jalankan `npm install` ulang. Catatan: Smart App Control tidak bisa dinyalakan lagi tanpa install ulang Windows.
 
 Mode development tanpa sumber asli (opsional), di `.env`:
 
